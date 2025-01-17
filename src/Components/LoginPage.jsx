@@ -6,8 +6,8 @@ const LoginPage = ({ onLogin }) => {
     const [password, setPassword] = useState('');
 
     const handleLogin = () => {
-        // Call backend API for login
-        onLogin();
+        // Perform authentication logic here
+        onLogin(); // Go to the next page
     };
 
     return (

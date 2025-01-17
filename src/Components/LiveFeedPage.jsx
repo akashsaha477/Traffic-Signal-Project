@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextField, Box, Button, Typography, Container } from '@mui/material';
 
-const LiveFeedPage = () => {
+const LiveFeedPage = ({ goToVehicleCountPage }) => {
     const [cameraURL, setCameraURL] = useState('');
 
     return (
@@ -41,9 +41,9 @@ const LiveFeedPage = () => {
                     variant="contained"
                     color="primary"
                     sx={{ mt: 3 }}
-                    onClick={() => alert('Fetching live feed...')}
+                    onClick={goToVehicleCountPage}
                 >
-                    Start Feed
+                    Go to Vehicle Count
                 </Button>
             </Box>
         </Container>
