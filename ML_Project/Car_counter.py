@@ -5,7 +5,8 @@ import cvzone
 import math
 from sort import *
  
-cap = cv2.VideoCapture("../data/test_videos/cars.mp4")  # For Video
+cap = cv2.VideoCapture("/Users/suryanshkhatri/Desktop/Traffic-Signal-Project/ML_Project/data/test_videos/cars.mp4")
+
  
 model = YOLO("../Yolo-Weights/yolov8l.pt")
  
@@ -21,7 +22,7 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
               "teddy bear", "hair drier", "toothbrush"
               ]
  
-mask = cv2.imread("../data/images/mask.png")
+mask = cv2.imread("/Users/suryanshkhatri/Desktop/Traffic-Signal-Project/ML_Project/data/images/mask.png")
  
 # Tracking
 tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
@@ -31,6 +32,7 @@ totalCount = []
  
 while True:
     success, img = cap.read()
+    mask = cv2.resize(mask, (img.shape[1], img.shape[0]))
     imgRegion = cv2.bitwise_and(img, mask)
  
     imgGraphics = cv2.imread("graphics.png", cv2.IMREAD_UNCHANGED)
