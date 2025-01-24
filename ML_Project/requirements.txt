@@ -10,6 +10,7 @@ opencv-python-headless==4.8.0.76
 pytesseract==0.3.10
 Pillow==9.5.0
 
+
 # Database management
 pymongo==4.5.0
 
@@ -25,4 +26,4 @@ seaborn==0.12.2
 
 # Development tools
 jupyter==1.0.0
-ipykernel==6.23.0
+ipykernel==6.23.2
