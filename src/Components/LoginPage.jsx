@@ -1,59 +1,63 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography, Container } from '@mui/material';
+import { Lock, User } from 'lucide-react';
 
 const LoginPage = ({ onLogin }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
 
-    const handleLogin = () => {
-        // Perform authentication logic here
-        onLogin(); // Go to the next page
-    };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // In a real app, you would validate credentials here
+    onLogin();
+  };
 
-    return (
-        <Container maxWidth="sm">
-            <Box
-                sx={{
-                    marginTop: 8,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                }}
-            >
-                <Typography variant="h4" gutterBottom>
-                    Login
-                </Typography>
-                <Box component="form" sx={{ mt: 1, width: '100%' }}>
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Username"
-                        variant="outlined"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                    />
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Password"
-                        type="password"
-                        variant="outlined"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        sx={{ mt: 3, mb: 2 }}
-                        onClick={handleLogin}
-                    >
-                        Login
-                    </Button>
-                </Box>
-            </Box>
-        </Container>
-    );
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center p-4">
+      <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 w-full max-w-md shadow-2xl">
+        <div className="text-center mb-8">
+          <div className="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Traffic Monitoring System</h1>
+          <p className="text-blue-200">Sign in to access the dashboard</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="text"
+                placeholder="Username"
+                className="w-full pl-10 pr-4 py-3 bg-white/5 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                value={credentials.username}
+                onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <input
+                type="password"
+                placeholder="Password"
+                className="w-full pl-10 pr-4 py-3 bg-white/5 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+                value={credentials.password}
+                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition duration-300"
+          >
+            Sign In
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 export default LoginPage;
