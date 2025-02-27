@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { Lock, User } from 'lucide-react';
+import axios from 'axios';
 
 const LoginPage = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, you would validate credentials here
-    onLogin();
+    setError('');
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/login', credentials);
+      if (response.data.message === 'Login successful') {
+        onLogin();
+      }
+    } catch (err) {
+      setError('Invalid credentials');
+    }
   };
 
   return (
@@ -20,6 +30,8 @@ const LoginPage = ({ onLogin }) => {
           <h1 className="text-2xl font-bold text-white mb-2">Traffic Monitoring System</h1>
           <p className="text-blue-200">Sign in to access the dashboard</p>
         </div>
+
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">

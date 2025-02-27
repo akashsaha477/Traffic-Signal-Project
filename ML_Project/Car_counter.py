@@ -6,7 +6,7 @@ import math
 from sort import *
 import os
 import time
-
+ 
 # Set up paths
 video_path = "/Users/akashsaha/Desktop/traffic_system/ML_Project/data/test_videos/cars.mp4"
 weights_path = "../Yolo-Weights/yolov8l.pt"
