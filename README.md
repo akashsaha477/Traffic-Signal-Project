@@ -1,33 +1,53 @@
-Title:
-AI-Driven Traffic Signal Control: Enhancing Efficiency,
-Safety, and Mobility
-Akash Saha1, Suryansh Khatri2, Gyanes Biswas3, Sai Sushmita4, Somya
-Ranjan Sahu5, Santos Kumar Das6
-National Institute of Technology Rourkela, Odisha
-1Corresponding Authors email id: akashsaha477@gmail.com
-Contact No: 8961762332
-Abstract:
-Traffic congestion, violations, and road safety issues are growing concerns in urban areas,
-primarily due to outdated traffic signal systems that operate on fixed timers. These static
-systems fail to adapt to real-time traffic conditions, leading to delays, inefficient traffic flow,
-and slower emergency response times. Additionally, traffic violations such as red-light
-jumping, overspeeding, and unauthorized lane usage contribute to accidents and law
-enforcement challenges.
-To address these issues, we are developing an IP-Based AI Traffic Signal System that utilizes
-computer vision and machine learning to dynamically manage traffic signals. By integrating
-IP cameras with deep learning models, our system continuously monitors traffic density and
-adjusts signal timings accordingly. It can also detect emergency vehicles and prioritize their
-movement while identifying traffic violations and recognizing stolen or suspicious vehicles
-for crime monitoring.
-Furthermore, pedestrian and crowd safety are enhanced through real-time detection of
-jaywalking and signal violations. We are implementing this system using Python, OpenCV,
-and PyTorch, which provide powerful tools for image processing, AI-driven decision-
-making, and real-time analytics. PyTorch, in particular, offers efficient deep learning
-frameworks for object detection and classification, making it ideal for handling live traffic
-data.
-Our solution is designed for commuters, traffic authorities, emergency services, and law
-enforcement agencies, aiming to improve traffic efficiency, ensure road safety, and
-contribute to smarter urban mobility. By combining AI-driven automation with real-time
-monitoring, we are creating a more adaptive, efficient, and safer traffic management system.
-Keywords: IP-Based Traffic Signal System, AI-driven automation, machine learning,
-real-time analytics.
+# AI-Driven Traffic Signal Control
+
+## Overview
+Traffic congestion, violations, and road safety issues are growing concerns in urban areas, primarily due to outdated traffic signal systems that operate on fixed timers. To address these challenges, this project introduces an **IP-Based AI Traffic Signal System** that leverages **computer vision** and **machine learning** to dynamically manage traffic signals.
+
+## Features
+- **Real-time traffic monitoring** using **IP cameras** and **deep learning models**.
+- **Adaptive signal control** based on live traffic density.
+- **Emergency vehicle detection** for prioritizing movement.
+- **Violation detection** (red-light jumping, overspeeding, unauthorized lane usage).
+- **Crime monitoring** by identifying stolen or suspicious vehicles.
+- **Pedestrian safety** through jaywalking and signal violation detection.
+
+## Technologies Used
+- **Python**: Core programming language for implementation.
+- **OpenCV**: For image processing and computer vision tasks.
+- **PyTorch**: Deep learning framework used for object detection and classification.
+- **Real-time analytics** for efficient traffic management.
+
+## Target Audience
+This system is designed for:
+- **Commuters** - To experience reduced traffic delays.
+- **Traffic authorities** - To better manage city traffic flow.
+- **Emergency services** - To ensure faster response times.
+- **Law enforcement agencies** - To detect and prevent traffic violations and crimes.
+
+## Installation & Setup
+1. **Clone the repository**:
+   ```sh
+   git clone <repository_url>
+   cd ai-traffic-signal-control
+   ```
+2. **Install dependencies**:
+   ```sh
+   pip install -r requirements.txt
+   ```
+3. **Run the system**:
+   ```sh
+   python main.py
+   ```
+
+## Future Enhancements
+- Integration with **IoT devices** for enhanced real-time data collection.
+- Expansion to **predictive traffic analytics** for better forecasting.
+- Cloud-based AI processing for scalability and efficiency.
+
+## Authors
+- **Akash Saha**, **Suryansh Khatri**, **Gyanes Biswas**, **Sai Sushmita**, **Somya Ranjan Sahu**, **Santos Kumar Das**
+- National Institute of Technology Rourkela, Odisha
+- Contact: [akashsaha477@gmail.com](mailto:akashsaha477@gmail.com)
+
+## License
+This project is licensed under the **MIT License**.
