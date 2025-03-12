@@ -27,8 +27,8 @@ This system is designed for:
 ## Installation & Setup
 1. **Clone the repository**:
    ```sh
-  git clone akashsaha477/Traffic-Signal-Project
-   cd ai-traffic-signal-control
+   git clone https://github.com/akashsaha477/Traffic-Signal-Project.git
+   cd Traffic-Signal-Project
    ```
 2. **Install dependencies**:
    ```sh
@@ -45,7 +45,7 @@ This system is designed for:
 - Cloud-based AI processing for scalability and efficiency.
 
 ## Authors
-- **Suryansh Khatri**,**Akash Saha**, **Gyanes Biswas**, **Sai Sushmita**, **Somya Ranjan Sahu**, **Santos Kumar Das**
+- **Suryansh Khatri**, **Akash Saha**, **Gyanes Biswas**, **Sai Sushmita**, **Somya Ranjan Sahu**, **Santos Kumar Das**
 - National Institute of Technology Rourkela, Odisha
 - Contact: [khatrisuryansh741@gmail.com](mailto:khatrisuryansh741@gmail.com)
 - Contact: [akashsaha477@gmail.com](mailto:akashsaha477@gmail.com)
