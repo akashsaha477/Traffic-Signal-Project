@@ -18,7 +18,7 @@ FPS = 30
 PIXELS_PER_METER = 10
 MIN_CONFIDENCE = 0.5
 SPEED_LIMIT = 60  # km/h
-LANE_BOUNDARY_X = None  # Set dynamically
+LANE_BOUNDARY_Y = None  # Set dynamically for horizontal line
 VEHICLES = [2, 3, 5, 7]  # COCO classes: car, motorcycle, bus, truck
 
 # Get the directory of the script for relative paths
@@ -83,11 +83,11 @@ def calculate_speed(prev_position, curr_position, frame_time, pixels_per_meter):
     speed_mps = distance_meters / frame_time
     return speed_mps * 3.6  # km/h
 
-def check_violations(center_x, speed, frame_width):
+def check_violations(center_y, speed, frame_height):
     violations = []
     if speed > SPEED_LIMIT:
         violations.append(f"Speeding: {speed:.1f} km/h (> {SPEED_LIMIT} km/h)")
-    if LANE_BOUNDARY_X and (center_x < LANE_BOUNDARY_X - 50 or center_x > LANE_BOUNDARY_X + 50):
+    if LANE_BOUNDARY_Y and (center_y < LANE_BOUNDARY_Y - 50 or center_y > LANE_BOUNDARY_Y + 50):
         violations.append("Lane Crossing")
     return violations
 
@@ -196,9 +196,10 @@ def check_criminal_record(collection, plate_number):
         return "Error checking records"
 
 def process_frame(frame, tracker, car_positions, collection, criminal_plates, frame_count, prev_time):
-    global LANE_BOUNDARY_X
+    global LANE_BOUNDARY_Y
+    # Initialize lane boundary as a horizontal line at the middle of the frame's height
     if frame_count == 1:
-        LANE_BOUNDARY_X = frame.shape[1] // 2
+        LANE_BOUNDARY_Y = frame.shape[0] // 2  # Horizontal line position (middle of frame)
 
     curr_time = time()
     frame_time = curr_time - prev_time if frame_count > 1 else 1/FPS
@@ -230,16 +231,43 @@ def process_frame(frame, tracker, car_positions, collection, criminal_plates, fr
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     cv2.putText(frame, f"ID: {track_id}", (x1, y1 - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
-                    # Speed calculation
+                    # Speed calculation - use moving average for stability
                     if track_id in car_positions:
                         prev_pos = car_positions[track_id]['position']
-                        speed = calculate_speed(prev_pos, (center_x, center_y), frame_time, PIXELS_PER_METER)
+                        prev_speed = car_positions[track_id].get('speed', 0)
+                        
+                        # Calculate current speed
+                        current_speed = calculate_speed(prev_pos, (center_x, center_y), frame_time, PIXELS_PER_METER)
+                        
+                        # Apply moving average for stability (80% previous, 20% current)
+                        if prev_speed > 0:
+                            speed = 0.8 * prev_speed + 0.2 * current_speed
+                        else:
+                            speed = current_speed
+                            
+                        # Constrain speed to reasonable values to eliminate spikes
+                        if abs(speed - prev_speed) > 10 and prev_speed > 0:
+                            speed = prev_speed
+                        
                         cv2.putText(frame, f"Speed: {speed:.1f} km/h", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                        violations = check_violations(center_x, speed, frame.shape[1])
+                        
+                        # Check for lane violations using y-coordinate instead of x
+                        violations = check_violations(center_y, speed, frame.shape[0])
                         for i, violation in enumerate(violations):
                             cv2.putText(frame, violation, (x1, y1 - 40 - i*15), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-                    car_positions[track_id] = {'position': (center_x, center_y), 'time': curr_time}
+                        
+                        # Update the position and include the calculated speed
+                        car_positions[track_id] = {
+                            'position': (center_x, center_y), 
+                            'time': curr_time,
+                            'speed': speed
+                        }
+                    else:
+                        car_positions[track_id] = {
+                            'position': (center_x, center_y), 
+                            'time': curr_time,
+                            'speed': 0  # Initial speed
+                        }
             else:
                 # No vehicles detected
                 track_ids = tracker.update(np.empty((0, 5)))
@@ -259,6 +287,10 @@ def process_frame(frame, tracker, car_positions, collection, criminal_plates, fr
 
     # Clean up old positions
     car_positions = {k: v for k, v in car_positions.items() if curr_time - v['time'] < 1.0}
+    
+    # Draw the horizontal lane boundary line
+    cv2.line(frame, (0, LANE_BOUNDARY_Y), (frame.shape[1], LANE_BOUNDARY_Y), (255, 0, 0), 2)
+    
     return frame, curr_time
 
 def main():
@@ -297,6 +329,10 @@ def main():
     car_positions = {}
     frame_count = 0
     prev_time = time()
+    
+    # Initialize the lane boundary to None, will be set when first frame is processed
+    global LANE_BOUNDARY_Y
+    LANE_BOUNDARY_Y = None
 
     try:
         while cap.isOpened():
@@ -306,11 +342,13 @@ def main():
                 break
             
             frame_count += 1
+            
+            # Initialize lane boundary on first frame
+            if frame_count == 1:
+                LANE_BOUNDARY_Y = frame.shape[0] // 2
 
             try:
                 frame, prev_time = process_frame(frame, tracker, car_positions, collection, criminal_plates, frame_count, prev_time)
-                if LANE_BOUNDARY_X is not None:
-                    cv2.line(frame, (LANE_BOUNDARY_X, 0), (LANE_BOUNDARY_X, frame.shape[0]), (255, 0, 0), 2)
             except Exception as e:
                 print(f"Error processing frame {frame_count}: {e}")
                 continue
