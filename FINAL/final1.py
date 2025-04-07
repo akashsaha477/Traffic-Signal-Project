@@ -15,8 +15,129 @@ import os
 from sort import Sort  # Assuming the SORT implementation is in a separate `sort.py` file
 from datetime import datetime
 
+#for utils
+import string
+import easyocr
+# Initialize the OCR reader
+reader = easyocr.Reader(['en'], gpu=True)
+
+# Mapping dictionaries for character conversion
+dict_char_to_int = {'O': '0',
+                    'I': '1',
+                    'J': '3',
+                    'A': '4',
+                    'G': '6',
+                    'S': '5'}
+
+dict_int_to_char = {'0': 'O',
+                    '1': 'I',
+                    '3': 'J',
+                    '4': 'A',
+                    '6': 'G',
+                    '5': 'S'}
+
+def license_complies_format(text):
+    """
+    Check if the license plate text complies with the required format.
+
+    Args:
+        text (str): License plate text.
+
+    Returns:
+        bool: True if the license plate complies with the format, False otherwise.
+    """
+    if len(text) != 7:
+        return False
+
+    if (text[0] in string.ascii_uppercase or text[0] in dict_int_to_char.keys()) and \
+       (text[1] in string.ascii_uppercase or text[1] in dict_int_to_char.keys()) and \
+       (text[2] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or text[2] in dict_char_to_int.keys()) and \
+       (text[3] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or text[3] in dict_char_to_int.keys()) and \
+       (text[4] in string.ascii_uppercase or text[4] in dict_int_to_char.keys()) and \
+       (text[5] in string.ascii_uppercase or text[5] in dict_int_to_char.keys()) and \
+       (text[6] in string.ascii_uppercase or text[6] in dict_int_to_char.keys()):
+        return True
+    else:
+        return False
+
+
+def format_license(text):
+    """
+    Format the license plate text by converting characters using the mapping dictionaries.
+
+    Args:
+        text (str): License plate text.
+
+    Returns:
+        str: Formatted license plate text.
+    """
+    license_plate_ = ''
+    mapping = {0: dict_int_to_char, 1: dict_int_to_char, 4: dict_int_to_char, 5: dict_int_to_char, 6: dict_int_to_char,
+               2: dict_char_to_int, 3: dict_char_to_int}
+    for j in [0, 1, 2, 3, 4, 5, 6]:
+        if text[j] in mapping[j].keys():
+            license_plate_ += mapping[j][text[j]]
+        else:
+            license_plate_ += text[j]
+
+    return license_plate_
+
+
+def read_license_plate(license_plate_crop):
+    """
+    Read the license plate text from the given cropped image.
+
+    Args:
+        license_plate_crop (PIL.Image.Image): Cropped image containing the license plate.
+
+    Returns:
+        tuple: Tuple containing the formatted license plate text and its confidence score.
+    """
+
+    detections = reader.readtext(license_plate_crop)
+
+    for detection in detections:
+        bbox, text, score = detection
+
+        text = text.upper().replace(' ', '')
+
+        if license_complies_format(text):
+            return format_license(text), score
+
+    return None, None
+
+
+def get_car(license_plate, vehicle_track_ids):
+    """
+    Retrieve the vehicle coordinates and ID based on the license plate coordinates.
+
+    Args:
+        license_plate (tuple): Tuple containing the coordinates of the license plate (x1, y1, x2, y2, score, class_id).
+        vehicle_track_ids (list): List of vehicle track IDs and their corresponding coordinates.
+
+    Returns:
+        tuple: Tuple containing the vehicle coordinates (x1, y1, x2, y2) and ID.
+    """
+    x1, y1, x2, y2, score, class_id = license_plate
+
+    foundIt = False
+    for j in range(len(vehicle_track_ids)):
+        xcar1, ycar1, xcar2, ycar2, car_id = vehicle_track_ids[j]
+
+        if x1 > xcar1 and y1 > ycar1 and x2 < xcar2 and y2 < ycar2:
+            car_indx = j
+            foundIt = True
+            break
+
+    if foundIt:
+        return vehicle_track_ids[car_indx]
+
+    return -1, -1, -1, -1, -1
+
+
+
 # Device setup
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # when running using nvidia gpu device -> "CUDA"
 
 # Constants
 FPS = 30
@@ -305,84 +426,85 @@ def detect_helmet(frame):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
     return frame
 
+
+coco_model = YOLO('yolov8n.pt').to(device)
+
 # Enhanced: Improved license plate detection with duplicate prevention
 def detect_license_plate(frame):
     global recent_plates
     results = license_plate_detector(frame)
+    license_plates = license_plate_detector(frame)[0]
     detected_plates = []
     current_time = time()
-    
-    # Clean up old entries in recent_plates
+
+    # Define vehicle classes (coco IDs)
+    vehicles = [2, 3, 5, 7]
+
+    #testing---------------------------
     recent_plates = {plate: time for plate, time in recent_plates.items() 
                     if current_time - time < PLATE_DETECTION_COOLDOWN}
-    
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            conf = float(box.conf[0])
-            
-            # Ensure coordinates are within frame boundaries
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(frame.shape[1], x2), min(frame.shape[0], y2)
-            
-            # Check if the crop area is valid
-            if x2 <= x1 or y2 <= y1 or x1 >= frame.shape[1] or y1 >= frame.shape[0]:
-                continue
-                
-            license_plate_crop = frame[y1:y2, x1:x2]
-            
-            # Check if crop is not empty
-            if license_plate_crop.size == 0:
-                continue
-            
-            # Preprocess the license plate image to improve OCR
-            # Convert to grayscale
-            gray = cv2.cvtColor(license_plate_crop, cv2.COLOR_BGR2GRAY)
-            # Apply adaptive thresholding
-            thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-            # Denoise
-            denoised = cv2.fastNlMeansDenoising(thresh, None, 10, 7, 21)
-                
-            try:
-                # Try OCR on both original and preprocessed images
-                detections_original = reader.readtext(license_plate_crop)
-                detections_processed = reader.readtext(denoised)
-                
-                # Combine and sort by confidence
-                all_detections = detections_original + detections_processed
-                all_detections.sort(key=lambda x: x[2], reverse=True)  # Sort by confidence
-                
-                for detection in all_detections:
-                    bbox, text, score = detection
-                    text = text.upper().replace(' ', '')
-                    
-                    # Filter out short or nonsensical plates
-                    if len(text) >= 4 and any(c.isalnum() for c in text):
-                        # Check if this plate was recently detected
-                        if text in recent_plates:
-                            last_detection_time = recent_plates[text]
-                            if current_time - last_detection_time < PLATE_DETECTION_COOLDOWN:
-                                continue  # Skip this plate if it was recently detected
-                        
-                        # Update the recent plates dictionary
-                        recent_plates[text] = current_time
-                        
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                        cv2.putText(frame, f"{text} ({score:.2f})", (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-                        
-                        detected_plates.append({
-                            'plate_number': text,
-                            'confidence': score,
-                            'bbox': (x1, y1, x2, y2)
-                        })
-                        break  # Use the highest confidence detection that passes filters
-            except Exception as e:
-                print(f"Error in OCR processing: {e}")
-                # Continue with next detection even if this one fails
+    # Process frames
+    frame_nmr = -1
+    ret = True
+    while ret:
+    frame_nmr += 1
+    ret, frame = cap.read()
+    if ret:
+        results[frame_nmr] = {}
+        # Detect vehicles
+        detections = coco_model(frame)[0]
+        detections_ = []
+        for detection in detections.boxes.data.tolist():
+            x1, y1, x2, y2, score, class_id = detection
+            if int(class_id) in vehicles:
+                detections_.append([x1, y1, x2, y2, score])
+
+        # Track vehicles
+        track_ids = mot_tracker.update(np.asarray(detections_))
+
+        # Detect license plates
+        license_plates = license_plate_detector(frame)[0]
+        for license_plate in license_plates.boxes.data.tolist():
+            x1, y1, x2, y2, score, class_id = license_plate
+
+            # Assign license plate to car
+            xcar1, ycar1, xcar2, ycar2, car_id = get_car(license_plate, track_ids)
+
+            if car_id != -1:
+                # Crop license plate
+                license_plate_crop = frame[int(y1):int(y2), int(x1): int(x2), :]
+
+                # Process license plate
+                license_plate_crop_gray = cv2.cvtColor(license_plate_crop, cv2.COLOR_BGR2GRAY)
+                _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
+
+                # Read license plate number
+                license_plate_text, license_plate_text_score = read_license_plate(license_plate_crop_thresh)
+                recent_plates[license_plate_text] = current_time
+
+
+
+                if license_plate_text is not None:
+                    results[frame_nmr][car_id] = {'car': {'bbox': [xcar1, ycar1, xcar2, ycar2]},
+                                                  'license_plate': {'bbox': [x1, y1, x2, y2],
+                                                                    'text': license_plate_text,
+                                                                    'bbox_score': score,
+                                                                    'text_score': license_plate_text_score}}
+
+                    detected_plates.append({
+                                'plate_number': license_plate_text,
+                                'confidence': license_plate_text_score,
+                                'bbox': (x1, y1, x2, y2)
+                            })
+                except Exception as e:
+                    print(f"Error in OCR processing: {e}")
+                    # Continue with next detection even if this one fails
     
     return detected_plates, frame
 
+
+    #----------------------------------
+    
 def detect_triple_riding(frame):
     bike_results = bike_detector(frame)
     person_results = person_detector(frame)
