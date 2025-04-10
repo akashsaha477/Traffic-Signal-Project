@@ -14,130 +14,11 @@ import argparse
 import os
 from sort import Sort  # Assuming the SORT implementation is in a separate `sort.py` file
 from datetime import datetime
-
-#for utils
 import string
 import easyocr
-# Initialize the OCR reader
-reader = easyocr.Reader(['en'], gpu=True)
-
-# Mapping dictionaries for character conversion
-dict_char_to_int = {'O': '0',
-                    'I': '1',
-                    'J': '3',
-                    'A': '4',
-                    'G': '6',
-                    'S': '5'}
-
-dict_int_to_char = {'0': 'O',
-                    '1': 'I',
-                    '3': 'J',
-                    '4': 'A',
-                    '6': 'G',
-                    '5': 'S'}
-
-def license_complies_format(text):
-    """
-    Check if the license plate text complies with the required format.
-
-    Args:
-        text (str): License plate text.
-
-    Returns:
-        bool: True if the license plate complies with the format, False otherwise.
-    """
-    if len(text) != 7:
-        return False
-
-    if (text[0] in string.ascii_uppercase or text[0] in dict_int_to_char.keys()) and \
-       (text[1] in string.ascii_uppercase or text[1] in dict_int_to_char.keys()) and \
-       (text[2] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or text[2] in dict_char_to_int.keys()) and \
-       (text[3] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or text[3] in dict_char_to_int.keys()) and \
-       (text[4] in string.ascii_uppercase or text[4] in dict_int_to_char.keys()) and \
-       (text[5] in string.ascii_uppercase or text[5] in dict_int_to_char.keys()) and \
-       (text[6] in string.ascii_uppercase or text[6] in dict_int_to_char.keys()):
-        return True
-    else:
-        return False
-
-
-def format_license(text):
-    """
-    Format the license plate text by converting characters using the mapping dictionaries.
-
-    Args:
-        text (str): License plate text.
-
-    Returns:
-        str: Formatted license plate text.
-    """
-    license_plate_ = ''
-    mapping = {0: dict_int_to_char, 1: dict_int_to_char, 4: dict_int_to_char, 5: dict_int_to_char, 6: dict_int_to_char,
-               2: dict_char_to_int, 3: dict_char_to_int}
-    for j in [0, 1, 2, 3, 4, 5, 6]:
-        if text[j] in mapping[j].keys():
-            license_plate_ += mapping[j][text[j]]
-        else:
-            license_plate_ += text[j]
-
-    return license_plate_
-
-
-def read_license_plate(license_plate_crop):
-    """
-    Read the license plate text from the given cropped image.
-
-    Args:
-        license_plate_crop (PIL.Image.Image): Cropped image containing the license plate.
-
-    Returns:
-        tuple: Tuple containing the formatted license plate text and its confidence score.
-    """
-
-    detections = reader.readtext(license_plate_crop)
-
-    for detection in detections:
-        bbox, text, score = detection
-
-        text = text.upper().replace(' ', '')
-
-        if license_complies_format(text):
-            return format_license(text), score
-
-    return None, None
-
-
-def get_car(license_plate, vehicle_track_ids):
-    """
-    Retrieve the vehicle coordinates and ID based on the license plate coordinates.
-
-    Args:
-        license_plate (tuple): Tuple containing the coordinates of the license plate (x1, y1, x2, y2, score, class_id).
-        vehicle_track_ids (list): List of vehicle track IDs and their corresponding coordinates.
-
-    Returns:
-        tuple: Tuple containing the vehicle coordinates (x1, y1, x2, y2) and ID.
-    """
-    x1, y1, x2, y2, score, class_id = license_plate
-
-    foundIt = False
-    for j in range(len(vehicle_track_ids)):
-        xcar1, ycar1, xcar2, ycar2, car_id = vehicle_track_ids[j]
-
-        if x1 > xcar1 and y1 > ycar1 and x2 < xcar2 and y2 < ycar2:
-            car_indx = j
-            foundIt = True
-            break
-
-    if foundIt:
-        return vehicle_track_ids[car_indx]
-
-    return -1, -1, -1, -1, -1
-
-
 
 # Device setup
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu") # when running using nvidia gpu device -> "CUDA"
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 # Constants
 FPS = 30
@@ -265,18 +146,7 @@ class TrafficSignal:
 # Initialize traffic signal
 traffic_signal = TrafficSignal()
 
-# Load models
-try:
-    bike_detector = YOLO(os.path.join(SCRIPT_DIR, 'yolov8n.pt')).to(device)  # Generic object detection
-    helmet_detector = YOLO(os.path.join(SCRIPT_DIR, 'helmet_detection.pt')).to(device)  # Pretrained helmet detection
-    license_plate_detector = YOLO(os.path.join(SCRIPT_DIR, 'license_plate_detector.pt')).to(device)  # License plate detection
-    person_detector = YOLO(os.path.join(SCRIPT_DIR, 'yolov8n.pt')).to(device)  # Person detection
-    print("Models loaded successfully")
-except Exception as e:
-    print(f"Error loading models: {e}")
-    raise
-
-# Initialize OCR reader with fixed Pillow compatibility
+# Initialize the OCR reader with Pillow compatibility fix
 try:
     # Patch for Pillow version compatibility
     import PIL
@@ -304,6 +174,137 @@ try:
     print("OCR reader initialized")
 except Exception as e:
     print(f"Error initializing OCR reader: {e}")
+    raise
+
+# Mapping dictionaries for character conversion
+dict_char_to_int = {'O': '0',
+                    'I': '1',
+                    'J': '3',
+                    'A': '4',
+                    'G': '6',
+                    'S': '5'}
+
+dict_int_to_char = {'0': 'O',
+                    '1': 'I',
+                    '3': 'J',
+                    '4': 'A',
+                    '6': 'G',
+                    '5': 'S'}
+
+def license_complies_format(text):
+    """
+    Check if the license plate text complies with the required format.
+
+    Args:
+        text (str): License plate text.
+
+    Returns:
+        bool: True if the license plate complies with the format, False otherwise.
+    """
+    if len(text) != 7:
+        return False
+
+    if (text[0] in string.ascii_uppercase or text[0] in dict_int_to_char.keys()) and \
+       (text[1] in string.ascii_uppercase or text[1] in dict_int_to_char.keys()) and \
+       (text[2] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or text[2] in dict_char_to_int.keys()) and \
+       (text[3] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] or text[3] in dict_char_to_int.keys()) and \
+       (text[4] in string.ascii_uppercase or text[4] in dict_int_to_char.keys()) and \
+       (text[5] in string.ascii_uppercase or text[5] in dict_int_to_char.keys()) and \
+       (text[6] in string.ascii_uppercase or text[6] in dict_int_to_char.keys()):
+        return True
+    else:
+        return False
+
+
+def format_license(text):
+    """
+    Format the license plate text by converting characters using the mapping dictionaries.
+
+    Args:
+        text (str): License plate text.
+
+    Returns:
+        str: Formatted license plate text.
+    """
+    license_plate_ = ''
+    mapping = {0: dict_int_to_char, 1: dict_int_to_char, 4: dict_int_to_char, 5: dict_int_to_char, 6: dict_int_to_char,
+               2: dict_char_to_int, 3: dict_char_to_int}
+    for j in [0, 1, 2, 3, 4, 5, 6]:
+        if text[j] in mapping[j].keys():
+            license_plate_ += mapping[j][text[j]]
+        else:
+            license_plate_ += text[j]
+
+    return license_plate_
+
+
+def read_license_plate(license_plate_crop):
+    """
+    Read the license plate text from the given cropped image.
+
+    Args:
+        license_plate_crop (PIL.Image.Image): Cropped image containing the license plate.
+
+    Returns:
+        tuple: Tuple containing the formatted license plate text and its confidence score.
+    """
+
+    detections = reader.readtext(license_plate_crop)
+
+    for detection in detections:
+        bbox, text, score = detection
+
+        text = text.upper().replace(' ', '')
+
+        if license_complies_format(text):
+            return format_license(text), score
+
+    return None, None
+
+
+def get_car(license_plate, vehicle_track_ids):
+    """
+    Retrieve the vehicle coordinates and ID based on the license plate coordinates.
+
+    Args:
+        license_plate (tuple): Tuple containing the coordinates of the license plate (x1, y1, x2, y2, score, class_id).
+        vehicle_track_ids (list): List of vehicle track IDs and their corresponding coordinates.
+
+    Returns:
+        tuple: Tuple containing the vehicle coordinates (x1, y1, x2, y2) and ID.
+    """
+    x1, y1, x2, y2, score, class_id = license_plate
+
+    foundIt = False
+    for j in range(len(vehicle_track_ids)):
+        xcar1, ycar1, xcar2, ycar2, car_id = vehicle_track_ids[j]
+
+        if x1 > xcar1 and y1 > ycar1 and x2 < xcar2 and y2 < ycar2:
+            car_indx = j
+            foundIt = True
+            break
+
+    if foundIt:
+        return vehicle_track_ids[car_indx]
+
+    return -1, -1, -1, -1, -1
+
+# Load models
+try:
+    # Load pretrained models
+    bike_detector = YOLO(os.path.join(SCRIPT_DIR, 'yolov8n.pt')).to(device)  # Pretrained YOLOv8 model for general object detection
+    helmet_detector = YOLO(os.path.join(SCRIPT_DIR, 'helmet_detection.pt')).to(device)  # Pretrained helmet detection model
+    license_plate_detector = YOLO(os.path.join(SCRIPT_DIR, 'license_plate_detector.pt')).to(device)  # Pretrained license plate detection
+    person_detector = YOLO(os.path.join(SCRIPT_DIR, 'yolov8n.pt')).to(device)  # Using YOLOv8 for person detection
+    coco_model = YOLO(os.path.join(SCRIPT_DIR, 'yolov8n.pt')).to(device)  # For vehicle detection using COCO classes
+    mot_tracker = Sort(max_age=1, min_hits=3, iou_threshold=0.3)  # Initialize tracker
+    print("Models loaded successfully")
+except Exception as e:
+    print(f"Error loading models: {e}")
+    print("Please ensure the following models are in the correct directory:")
+    print(f"1. yolov8n.pt (YOLOv8 pretrained model) - Expected at: {os.path.join(SCRIPT_DIR, 'yolov8n.pt')}")
+    print(f"2. helmet_detection.pt (Helmet detection model) - Expected at: {os.path.join(SCRIPT_DIR, 'helmet_detection.pt')}")
+    print(f"3. license_plate_detector.pt (License plate detection model) - Expected at: {os.path.join(SCRIPT_DIR, 'license_plate_detector.pt')}")
     raise
 
 # MongoDB setup
@@ -381,6 +382,7 @@ def save_license_plate(file_path, plate_info):
         # Format speed with 1 decimal place
         speed_str = f"{float(plate_info['speed']):.1f}" if isinstance(plate_info['speed'], (int, float)) else plate_info['speed']
         
+        # Open file in append mode and write immediately
         with open(file_path, 'a', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([
@@ -391,6 +393,8 @@ def save_license_plate(file_path, plate_info):
                 speed_str,
                 violations_str
             ])
+            # Flush the file to ensure immediate write
+            file.flush()
             print(f"License plate '{plate_info['plate_number']}' saved to CSV")
     except Exception as e:
         print(f"Error saving license plate to CSV: {e}")
@@ -426,32 +430,22 @@ def detect_helmet(frame):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
     return frame
 
-
-coco_model = YOLO('yolov8n.pt').to(device)
-
 # Enhanced: Improved license plate detection with duplicate prevention
 def detect_license_plate(frame):
-    global recent_plates
+    global recent_plates, mot_tracker
     results = license_plate_detector(frame)
-    license_plates = license_plate_detector(frame)[0]
     detected_plates = []
     current_time = time()
-
-    # Define vehicle classes (coco IDs)
-    vehicles = [2, 3, 5, 7]
-
-    #testing---------------------------
+    
+    # Clean up old entries in recent_plates
     recent_plates = {plate: time for plate, time in recent_plates.items() 
                     if current_time - time < PLATE_DETECTION_COOLDOWN}
-    # Process frames
-    frame_nmr = -1
-    ret = True
-    while ret:
-    frame_nmr += 1
-    ret, frame = cap.read()
-    if ret:
-        results[frame_nmr] = {}
-        # Detect vehicles
+    
+    try:
+        # Define vehicle classes (coco IDs)
+        vehicles = [2, 3, 5, 7]
+        
+        # Detect vehicles in the current frame
         detections = coco_model(frame)[0]
         detections_ = []
         for detection in detections.boxes.data.tolist():
@@ -462,49 +456,51 @@ def detect_license_plate(frame):
         # Track vehicles
         track_ids = mot_tracker.update(np.asarray(detections_))
 
-        # Detect license plates
-        license_plates = license_plate_detector(frame)[0]
+        # Process license plates
+        license_plates = results[0]
         for license_plate in license_plates.boxes.data.tolist():
             x1, y1, x2, y2, score, class_id = license_plate
+            
+            # Draw bounding box for license plate
+            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
 
             # Assign license plate to car
             xcar1, ycar1, xcar2, ycar2, car_id = get_car(license_plate, track_ids)
 
             if car_id != -1:
-                # Crop license plate
-                license_plate_crop = frame[int(y1):int(y2), int(x1): int(x2), :]
+                try:
+                    # Crop license plate
+                    license_plate_crop = frame[int(y1):int(y2), int(x1): int(x2), :]
 
-                # Process license plate
-                license_plate_crop_gray = cv2.cvtColor(license_plate_crop, cv2.COLOR_BGR2GRAY)
-                _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
+                    # Process license plate
+                    license_plate_crop_gray = cv2.cvtColor(license_plate_crop, cv2.COLOR_BGR2GRAY)
+                    _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
 
-                # Read license plate number
-                license_plate_text, license_plate_text_score = read_license_plate(license_plate_crop_thresh)
-                recent_plates[license_plate_text] = current_time
+                    # Read license plate number
+                    license_plate_text, license_plate_text_score = read_license_plate(license_plate_crop_thresh)
+                    
+                    if license_plate_text is not None:
+                        # Update recent plates
+                        recent_plates[license_plate_text] = current_time
+                        
+                        # Draw the license plate text
+                        cv2.putText(frame, f"Plate: {license_plate_text}", 
+                                  (int(x1), int(y1) - 10),
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-
-
-                if license_plate_text is not None:
-                    results[frame_nmr][car_id] = {'car': {'bbox': [xcar1, ycar1, xcar2, ycar2]},
-                                                  'license_plate': {'bbox': [x1, y1, x2, y2],
-                                                                    'text': license_plate_text,
-                                                                    'bbox_score': score,
-                                                                    'text_score': license_plate_text_score}}
-
-                    detected_plates.append({
-                                'plate_number': license_plate_text,
-                                'confidence': license_plate_text_score,
-                                'bbox': (x1, y1, x2, y2)
-                            })
+                        detected_plates.append({
+                            'plate_number': license_plate_text,
+                            'confidence': license_plate_text_score,
+                            'bbox': (x1, y1, x2, y2)
+                        })
                 except Exception as e:
                     print(f"Error in OCR processing: {e}")
                     # Continue with next detection even if this one fails
+    except Exception as e:
+        print(f"Error in license plate detection: {e}")
     
     return detected_plates, frame
 
-
-    #----------------------------------
-    
 def detect_triple_riding(frame):
     bike_results = bike_detector(frame)
     person_results = person_detector(frame)
@@ -698,32 +694,49 @@ def process_frame(frame, tracker, car_positions, collection, criminal_plates, fr
                         'bbox': (x1, y1, x2, y2)
                     }
                         
-                    # Association of license plates with vehicles (for updating the CSV later)
-                    for plate_info in detected_plates:
-                        px1, py1, px2, py2 = plate_info['bbox']
+                # Find best license plate detections (highest confidence)
+                best_plates = {}
+                for plate_info in detected_plates:
+                    plate_number = plate_info['plate_number']
+                    confidence = plate_info['confidence']
+                    
+                    if plate_number not in best_plates or confidence > best_plates[plate_number]['confidence']:
+                        best_plates[plate_number] = plate_info
+                
+                # Process only the highest confidence license plates
+                for plate_number, plate_info in best_plates.items():
+                    px1, py1, px2, py2 = plate_info['bbox']
+                    
+                    # Association of license plates with vehicles
+                    for track in track_ids:
+                        x1, y1, x2, y2, track_id = map(int, track)
                         # Check if the license plate is inside or overlapping with this vehicle
                         if (px1 >= x1 and px2 <= x2 and py1 >= y1 and py2 <= y2) or \
                            (max(0, min(px2, x2) - max(px1, x1)) > 0 and max(0, min(py2, y2) - max(py1, y1)) > 0):
                             
-                            # Add the vehicle info to the already saved plate
-                            updated_plate_data = {
-                                'timestamp': timestamp,
-                                'plate_number': plate_info['plate_number'],
-                                'confidence': plate_info['confidence'],
-                                'vehicle_type': vehicle_type,
-                                'speed': speed,
-                                'violations': violations
-                            }
-                            
-                            # Include criminal vehicle status if needed
-                            if plate_info['plate_number'] in criminal_plates:
-                                cv2.putText(frame, "CRIMINAL VEHICLE", (x1, y1 - 55), 
-                                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                                if "Criminal Vehicle" not in violations:
-                                    updated_plate_data['violations'].append("Criminal Vehicle")
-                            
-                            # Save updated information in a new row (this creates a history of the plate with updated info)
-                            save_license_plate(csv_path, updated_plate_data)
+                            # Add the vehicle info to the plate data
+                            if track_id in car_positions:
+                                vehicle_info = car_positions[track_id]
+                                
+                                updated_plate_data = {
+                                    'timestamp': timestamp,
+                                    'plate_number': plate_number,
+                                    'confidence': plate_info['confidence'],
+                                    'vehicle_type': vehicle_info.get('vehicle_type', 'Unknown'),
+                                    'speed': vehicle_info.get('speed', 0),
+                                    'violations': vehicle_info.get('violations', [])
+                                }
+                                
+                                # Include criminal vehicle status if needed
+                                if plate_number in criminal_plates:
+                                    cv2.putText(frame, "CRIMINAL VEHICLE", (x1, y1 - 55), 
+                                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                                    if "Criminal Vehicle" not in updated_plate_data['violations']:
+                                        updated_plate_data['violations'].append("Criminal Vehicle")
+                                
+                                # Save the highest confidence detection to CSV
+                                save_license_plate(csv_path, updated_plate_data)
+                                break  # Save to only one vehicle
             else:
                 track_ids = tracker.update(np.empty((0, 5)))
         else:
@@ -747,13 +760,7 @@ def process_frame(frame, tracker, car_positions, collection, criminal_plates, fr
     
     return frame, curr_time
 
-def main():
-    parser = argparse.ArgumentParser(description="Traffic Violation Detection System")
-    parser.add_argument('--video', type=str, default='sample.mp4', help='Path to video file or 0 for webcam')
-    parser.add_argument('--criminal_plates', type=str, default=None, help='Path to criminal plates CSV')
-    parser.add_argument('--output_csv', type=str, default=LICENSE_PLATE_CSV, help='Path to output CSV for detected license plates')
-    args = parser.parse_args()
-
+def process_video(video_path):
     # Initialize components
     try:
         tracker = Sort(max_age=1, min_hits=3, iou_threshold=0.3)
@@ -763,24 +770,45 @@ def main():
         return
 
     collection = init_db()
-    criminal_plates = load_criminal_plates(args.criminal_plates)
-    csv_path = init_license_plate_csv(args.output_csv)
+    criminal_plates = load_criminal_plates(None)
+    csv_path = init_license_plate_csv(LICENSE_PLATE_CSV)
     
     # Handle video input
-    video_path = args.video
-    if video_path == '0':
-        video_path = 0
-    elif not os.path.isabs(video_path):
-        video_path = os.path.join(SCRIPT_DIR, video_path)
+    video_source = video_path
+    if video_source == '0':
+        video_source = 0
+        print("Using webcam as video source")
+    elif video_source.startswith(('http://', 'https://', 'rtsp://', 'rtmp://')):
+        print(f"Using video stream from URL: {video_source}")
+    else:
+        # Handle local file path
+        if not os.path.isabs(video_source):
+            video_source = os.path.join(SCRIPT_DIR, video_source)
+        if not os.path.exists(video_source):
+            print(f"Error: Video file not found at {video_source}")
+            return
+        print(f"Using local video file: {video_source}")
     
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        print(f"Error: Could not open video source {video_path}.")
+    # Initialize video capture with error handling
+    try:
+        cap = cv2.VideoCapture(video_source)
+        if not cap.isOpened():
+            print(f"Error: Could not open video source {video_source}.")
+            return
+        
+        # Get video properties
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        print(f"Video properties - Width: {width}, Height: {height}, FPS: {fps}")
+        
+        # Set video properties for better performance
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+        cap.set(cv2.CAP_PROP_FPS, FPS)
+        
+    except Exception as e:
+        print(f"Error initializing video capture: {e}")
         return
-
-    # Set video properties for better performance
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
-    cap.set(cv2.CAP_PROP_FPS, FPS)
 
     car_positions = {}
     frame_count = 0
@@ -824,6 +852,41 @@ def main():
         cap.release()
         cv2.destroyAllWindows()
         print(f"Processing complete. License plates saved to {csv_path}")
+
+def main():
+    # Default video path
+    default_video_path = os.path.join(SCRIPT_DIR, 'sample.mp4')
+    
+    # Check if user wants to use default video or specify a different one
+    print("\nTraffic Violation Detection System")
+    print("----------------------------------")
+    print("1. Use default video (sample.mp4)")
+    print("2. Enter custom video path")
+    print("3. Use webcam (0)")
+    print("4. Use command line arguments")
+    
+    choice = input("\nEnter your choice (1-4): ").strip()
+    
+    if choice == '1':
+        process_video(default_video_path)
+    elif choice == '2':
+        video_path = input("Enter video path: ").strip()
+        process_video(video_path)
+    elif choice == '3':
+        process_video('0')
+    elif choice == '4':
+        parser = argparse.ArgumentParser(description="Traffic Violation Detection System")
+        parser.add_argument('--video', type=str, default=default_video_path, 
+                          help='Path to video file, URL, or 0 for webcam')
+        parser.add_argument('--criminal_plates', type=str, default=None, 
+                          help='Path to criminal plates CSV')
+        parser.add_argument('--output_csv', type=str, default=LICENSE_PLATE_CSV, 
+                          help='Path to output CSV for detected license plates')
+        args = parser.parse_args()
+        process_video(args.video)
+    else:
+        print("Invalid choice. Using default video.")
+        process_video(default_video_path)
 
 if __name__ == "__main__":
     main()
