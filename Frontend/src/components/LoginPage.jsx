@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Lock, User } from 'lucide-react';
 import axios from 'axios';
 
+// Configure axios defaults
+axios.defaults.withCredentials = true;
+
 const LoginPage = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
@@ -11,12 +14,15 @@ const LoginPage = ({ onLogin }) => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', credentials);
+      const response = await axios.post('http://localhost:5000/api/auth/login', credentials, {
+        withCredentials: true
+      });
       if (response.data.message === 'Login successful') {
         onLogin();
       }
     } catch (err) {
       setError('Invalid credentials');
+      console.error('Login error:', err);
     }
   };
 

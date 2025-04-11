@@ -21,7 +21,7 @@ router.post('/login', async (req, res) => {
     // 3. Generate JWT
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'traffic_system_secret_key_2024',
       { expiresIn: '1h' }
     );
 
@@ -33,19 +33,17 @@ router.post('/login', async (req, res) => {
       maxAge: 3600000 // 1 hour
     });
 
-    router.post('/logout', (req, res) => {
-        res.clearCookie('token');
-        res.json({ message: 'Logout successful' });
-      });
-      app.use(cors({
-        origin: process.env.CLIENT_URL,
-        credentials: true
-      }));
-
     res.json({ message: 'Login successful' });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// Logout
+router.post('/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ message: 'Logout successful' });
 });
 
 export default router;
